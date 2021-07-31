@@ -55,13 +55,6 @@ def RANSAC_fit(x, y, n_iterations=None, threshold=None, min_inliers=None):
         denominator = np.sqrt(diff_x*diff_x + diff_y*diff_y)
         distance = numerator / denominator
 
-        # calculate threshold
-        #if threshold == None:
-        #    # calculate Median absolute deviation
-        #    thresh = np.median(np.abs(distance - np.median(distance)))
-        #else:
-        #    thresh = threshold
-
         # calculate amount of inliers
         num_inliers = (distance < thresh).sum()
 
