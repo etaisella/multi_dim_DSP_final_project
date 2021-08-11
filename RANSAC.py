@@ -14,13 +14,13 @@ def RANSAC_fit(x, y, n_iterations=None, threshold=None, min_inliers=None):
     # calculate threshold
     if threshold == None:
         # calculate Median absolute deviation
-        thresh = 0.01*np.median(np.abs(y - np.median(y)))
+        thresh = 0.003*np.median(np.abs(y - np.median(y)))
     else:
         thresh = threshold
 
     # calculate min_inliers
     if min_inliers == None:
-        min_inl = int(0.9*x.size)
+        min_inl = int(0.75*x.size)
     else:
         min_inl = min_inliers
 
@@ -128,4 +128,4 @@ def RANSAC_test():
     plt.ylabel("Response")
     plt.show()
 
-#RANSAC_test()
+RANSAC_test()
