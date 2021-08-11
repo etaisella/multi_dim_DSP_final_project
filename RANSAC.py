@@ -128,4 +128,4 @@ def RANSAC_test():
     plt.ylabel("Response")
     plt.show()
 
-RANSAC_test()
+#RANSAC_test()

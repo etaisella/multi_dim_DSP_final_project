@@ -120,6 +120,11 @@ def test(data, sigma):
     outlier_mask = np.logical_not(inlier_mask)
     line_y_ransac = ransac.predict(line_X)
 
+    # Sklearn Linear Regressor
+    lr = linear_model.LinearRegression()
+    lr.fit(X, y)
+    line_y_lin_regres = lr.predict(line_X)
+
     # Plots
     fig, axs = plt.subplots(2)
 
@@ -137,8 +142,11 @@ def test(data, sigma):
     # Our RANSAC
     axs[1].plot(line_X, our_prediction, color='red', linewidth=2, label='Our RANSAC')
 
-    # Sklear RANSAC
+    # Sklearn RANSAC
     axs[1].plot(line_X, line_y_ransac, color='cornflowerblue', linewidth=2, label='sklearn RANSAC')
+
+    # Sklearn Linear Regressor
+    axs[1].plot(line_X, line_y_lin_regres, color='black', linewidth=2, label='sklearn Linear Regressor')
 
     # Real Linear Chirp
     axs[1].plot(linear[:, 0], linear[:, 1], linewidth=1, label='Real Linear Chirp')
