@@ -124,6 +124,7 @@ def RANSAC_test():
     plt.plot(line_X, line_y_ransac, color='cornflowerblue', linewidth=lw,
              label='sklearn RANSAC')
     plt.legend(loc='lower right')
+    plt.title("RANSAC Test")
     plt.xlabel("Input")
     plt.ylabel("Response")
     plt.show()

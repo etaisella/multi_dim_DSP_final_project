@@ -5,9 +5,10 @@ import itertools
 from RANSAC import RANSAC_fit
 from sklearn import linear_model
 import json
+from utilities import xyData2BinaryImage
 
 
-def make_chirps(amp=1, mu=0, sigmas=[0]):
+def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
 
     # Define parameters
     T = [5]
@@ -35,6 +36,12 @@ def make_chirps(amp=1, mu=0, sigmas=[0]):
 
             # Linear Signal
             linear = [[0, f0], [T, f1]]
+
+            # add another, fixed chirp to test hough
+            if second_chirp:
+                scnd_chirp = amp*chirp(t, f0=3000, f1=5000, t1=T, method='linear')
+                signal = signal + scnd_chirp
+                linear = [linear, [[0, 3000], [T, 5000]]]
 
             # Add noise
             noise = np.random.normal(mu, sigma, signal.shape)
@@ -83,7 +90,7 @@ def get_points(S):
     return points
 
 
-def test(data, sigma):
+def chirp_test(data, sigma):
     ''' Test '''
 
     # Get sample
@@ -158,6 +165,8 @@ def test(data, sigma):
     plt.show()
 
 
+
+
 ''' Make Data '''
 # Define sigmas
 sigmas = [0, 0.5, 1, 2, 2.5, 2.7, 2.8, 2.9, 3, 3.5, 4, 5, 6]
@@ -172,5 +181,4 @@ data = make_chirps(amp=1, mu=0, sigmas=sigmas)
 # jsonFile.close()
 
 # Test
-test(data, sigma=2.7)
-
+chirp_test(data, sigma=2.7)
