@@ -5,7 +5,6 @@ import itertools
 from RANSAC import RANSAC_fit
 from sklearn import linear_model
 import json
-from utilities import xyData2BinaryImage
 
 
 def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):

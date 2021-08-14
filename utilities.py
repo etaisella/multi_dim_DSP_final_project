@@ -1,6 +1,4 @@
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 def xyData2BinaryImage(x, y):
     # transform column to row if necessary

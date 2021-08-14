@@ -1,4 +1,5 @@
 from make_chirps import *
+from utilities import xyData2BinaryImage
 import numpy as np
 from skimage.transform import hough_line, hough_line_peaks
 import matplotlib.pyplot as plt
