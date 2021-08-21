@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from utilities import calcCRE, getSlopeAndInterceptFromPoints
 from scipy.signal import stft, chirp, spectrogram
 import itertools
 from RANSAC import RANSAC_fit
@@ -159,6 +160,9 @@ def chirp_test(data, sigma):
 
     axs[1].set(xlabel='Time [s]', ylabel='Frequency [Hz]')
     axs[1].legend()
+
+    chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[0, 0], linear[0, 1], linear[1, 0], linear[1, 1])
+    CRE = calcCRE(chirpSlope, chirpIntercept, a, b, 0, len(data['signal'][sample]) / fs)
 
     plt.tight_layout()
     plt.show()
