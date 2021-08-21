@@ -161,6 +161,7 @@ def chirp_test(data, sigma):
     axs[1].set(xlabel='Time [s]', ylabel='Frequency [Hz]')
     axs[1].legend()
 
+    # calculate errors
     chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[0, 0], linear[0, 1], linear[1, 0], linear[1, 1])
     CRE = calcCRE(chirpSlope, chirpIntercept, a, b, 0, len(data['signal'][sample]) / fs)
 
