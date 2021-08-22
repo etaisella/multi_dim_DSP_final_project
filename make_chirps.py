@@ -90,6 +90,10 @@ def get_points(S):
     return points
 
 
+def median_filter(data):
+    pass
+
+
 def chirp_test(data, sigma):
     ''' Test '''
 
