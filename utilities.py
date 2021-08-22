@@ -35,3 +35,54 @@ def calcCRE(slope1, yIntercept1, slope2, yIntercept2, min_x_val, max_x_val, samp
     errors = (diffRatio < 0.99) + (diffRatio > 1.01)
     numErrors = np.sum(errors)
     return numErrors / samples
+
+def calcSNR(signal, noise):
+
+    # Calculate mean
+    avg_signal_p = np.mean(np.power(signal, 2))
+    avg_noise_p = np.mean(np.power(noise, 2))
+
+    # Power SNR
+    snr_p = avg_signal_p / avg_noise_p
+
+    # db
+    snr = 10*np.log10(snr_p)
+
+    return snr
+
+def extractTimeFrequencyCurve(S, fs, T):
+
+    # Initiate points array
+    points = np.zeros([S.shape[1], 2], dtype=int)
+
+    # Find frequencies
+    for i, row in enumerate(S.T):  # Same as col in S
+        points[i, 1] = i
+        points[i, 0] = np.argmax(row)
+
+    # Build axes
+    f_step, t_step = S.shape
+    t = np.linspace(0, T, t_step)
+    f = np.linspace(0, fs/2, f_step)
+
+    # Get Time & Frequency
+    X = np.reshape(t[points[:, 1]], [-1, 1])
+    y = f[points[:, 0]]
+
+    return X, y
+
+def medianFilter(signal, N_med):
+    
+    # Pad signal
+    padded_signal = np.append(np.repeat(signal[0], N_med//2), signal)
+    padded_signal = np.append(padded_signal, np.repeat(signal[-1], N_med//2))
+
+    # Build signal based on median filter
+    for i in range(len(padded_signal) - N_med):
+        sorted_short_signal = np.sort(padded_signal[i:i+N_med])
+        signal[i] = sorted_short_signal[N_med//2]
+    
+    return signal
+
+        
+

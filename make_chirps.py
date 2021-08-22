@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities import calcCRE, getSlopeAndInterceptFromPoints
+from utilities import *
 from scipy.signal import stft, chirp, spectrogram
 import itertools
 from RANSAC import RANSAC_fit
@@ -17,6 +17,7 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
 
     # Initiate chirps dict
     chirps = {'fs': [],
+              'T': [],
               'linear': [],
               'signal': [],
               'snr': [],
@@ -48,13 +49,14 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
             noisy_signal = signal + noise
 
             # Calculate SNR
-            snr = np.around(SNR(signal, noisy_signal), 2)
+            snr = np.around(calcSNR(signal, noisy_signal), 2)
 
             # Get stft
             _, _, Zxx = stft(noisy_signal, fs=fs, nfft=256)
 
             # Append to dict
             chirps['fs'].append(fs)
+            chirps['T'].append(T)
             chirps['linear'].append(linear)
             chirps['signal'].append(noisy_signal.tolist())
             chirps['snr'].append(snr.tolist())
@@ -62,36 +64,6 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
             chirps['spec'].append(np.abs(Zxx).tolist())
     
     return chirps
-
-
-def SNR(signal, noise):
-
-    # Calculate mean
-    avg_signal_p = np.mean(np.power(signal, 2))
-    avg_noise_p = np.mean(np.power(noise, 2))
-
-    # Power SNR
-    snr_p = avg_signal_p / avg_noise_p
-
-    # db
-    snr = 10*np.log10(snr_p)
-
-    return snr
-
-
-def get_points(S):
-    
-    points = np.zeros([S.shape[1], 2], dtype=int)
-
-    for i, row in enumerate(S.T): # Same as col in S
-        points[i, 1] = i
-        points[i, 0] = np.argmax(row)
-    
-    return points
-
-
-def median_filter(data):
-    pass
 
 
 def chirp_test(data, sigma):
@@ -105,19 +77,19 @@ def chirp_test(data, sigma):
         return
     
     fs = data['fs'][sample]
+    T = data['T'][sample]
     S = np.array(data['spec'][sample])
     snr = np.array(data['snr'][sample])
     linear = np.array(data['linear'][sample])
     f_step, t_step = S.shape
 
     # Build axes
-    t = np.linspace(0, len(data['signal'][sample]) / fs, t_step)
+    t = np.linspace(0, T, t_step)
     f = np.linspace(0, fs/2, f_step)
 
-    # Get stft points
-    points = get_points(S)
-    X = np.reshape(t[points[:, 1]], [-1, 1])
-    y = f[points[:, 0]]
+    # Extract time frequency curve
+    X, y = extractTimeFrequencyCurve(S, fs, T)
+    y = medianFilter(y, N_med=10)
 
     # Our RANSAC
     line_X = np.arange(X.min(), X.max())[:, np.newaxis]
@@ -175,18 +147,41 @@ def chirp_test(data, sigma):
 
 
 
-''' Make Data '''
-# Define sigmas
-sigmas = [0, 0.5, 1, 2, 2.5, 2.7, 2.8, 2.9, 3, 3.5, 4, 5, 6]
+# # ''' Make Data '''
+# # Define sigmas
+# sigmas = [0, 0.5, 1, 2, 2.5, 2.7, 2.8, 2.9, 3, 3.5, 4, 5, 6]
 
-# Make chirps
+# # Make chirps
+# data = make_chirps(amp=1, mu=0, sigmas=sigmas)
+# # # Save json
+# # json_data = json.dumps(data)
+# # jsonFile = open("data.json", "w")
+# # jsonFile.write(json_data)
+# # jsonFile.close()
+# # # Test
+# chirp_test(data, sigma=2.7)
+
+
+''' Test Median Filter '''
+sigmas = [3]
 data = make_chirps(amp=1, mu=0, sigmas=sigmas)
 
-# # Save json
-# json_data = json.dumps(data)
-# jsonFile = open("data.json", "w")
-# jsonFile.write(json_data)
-# jsonFile.close()
+sample = 0
+fs = data['fs'][sample]
+T = data['T'][sample]
+S = np.array(data['spec'][sample])
+snr = np.array(data['snr'][sample])
+linear = np.array(data['linear'][sample])
+f_step, t_step = S.shape
 
-# Test
-chirp_test(data, sigma=2.7)
+# Get stft points
+X, y = extractTimeFrequencyCurve(S, fs, T)
+
+# Medeian filter
+y_median = medianFilter(y.copy(), N_med=10)
+
+# Plot
+plt.plot(X, y)
+plt.plot(X, y_median)
+plt.show()
+
