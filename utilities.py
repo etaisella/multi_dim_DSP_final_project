@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import signal
 
 def xyData2BinaryImage(x, y):
     # transform column to row if necessary
@@ -36,14 +37,16 @@ def calcCRE(slope1, yIntercept1, slope2, yIntercept2, min_x_val, max_x_val, samp
     numErrors = np.sum(errors)
     return numErrors / samples
 
-def calcSNR(signal, noise):
+def calcSNR(sig, noise):
 
     # Calculate mean
-    avg_signal_p = np.mean(np.power(signal, 2))
+    # _, avg_noise_p = signal.welch(sig)
+    # _, avg_noise_p = signal.welch(noise)
+    avg_signal_p = np.mean(np.power(sig, 2))
     avg_noise_p = np.mean(np.power(noise, 2))
 
     # Power SNR
-    snr_p = avg_signal_p / avg_noise_p
+    snr_p = np.mean(avg_signal_p) / np.mean(avg_noise_p)
 
     # db
     snr = 10*np.log10(snr_p)
@@ -71,7 +74,7 @@ def extractTimeFrequencyCurve(S, fs, T):
 
     return X, y
 
-def medianFilter(signal, N_med):
+def medianFilter(signal, N_med=9):
     
     # Pad signal
     padded_signal = np.append(np.repeat(signal[0], N_med//2), signal)
@@ -83,6 +86,3 @@ def medianFilter(signal, N_med):
         signal[i] = sorted_short_signal[N_med//2]
     
     return signal
-
-        
-
