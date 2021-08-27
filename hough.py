@@ -10,11 +10,12 @@ def hough_test():
     data = make_chirps(amp=1, mu=0, sigmas=sigmas, second_chirp=True)
 
     try:
-        sample = data['sigma'].index(2.9)
+        sample = data['sigma'].index(5)
     except ValueError:
         print('Sigma not found!')
         return
 
+    T = [1e-4]
     fs = data['fs'][sample]
     S = np.array(data['spec'][sample])
     snr = np.array(data['snr'][sample])
@@ -26,9 +27,9 @@ def hough_test():
     f = np.linspace(0, fs / 2, f_step)
 
     # Get stft points
-    points = get_points(S)
-    x = np.reshape(t[points[:, 1]], [-1, 1])
-    y = f[points[:, 0]]
+    x, y_no_med = extractTimeFrequencyCurve(S, fs, T)
+    y = y_no_med
+    #y = medianFilter(y_no_med, N_med=9)
 
     # get image of two chirps
     img, scale, yshift = xyData2BinaryImage(x, y)
@@ -66,8 +67,8 @@ def hough_test():
     plt.plot(linear[0, :, 0], linear[0, :, 1], color='blue', linewidth=2, label='Real Linear Chirp')
     plt.plot(linear[1, :, 0], linear[1, :, 1], color='blue', linewidth=2,)
 
-    xticks_labels = np.around(np.linspace(np.min(x), np.max(x), num=10), 2)
-    yticks_labels = np.linspace(np.max(y), np.min(y), num=10).astype(int)
+    xticks_labels = np.around(np.linspace(np.min(x)*1e6, np.max(x)*1e6, num=10), 2)
+    yticks_labels = np.linspace(np.max(y)*1e-6, np.min(y)*1e-6, num=10).astype(int)
     xticks = np.linspace(0, img.shape[1], num=10)
     yticks = np.linspace(0, img.shape[0], num=10)
 
@@ -75,11 +76,9 @@ def hough_test():
     plt.yticks(yticks, labels=yticks_labels)
 
     plt.title("Hough transform on two chirp signals + white noise")
-    plt.xlabel("Time intervals")
-    plt.ylabel("Frequencies (Hz)")
+    plt.xlabel(r'$Time [\mu s]$')
+    plt.ylabel("Frequencies [Hz]")
     plt.legend()
 
     plt.tight_layout()
     plt.show()
-
-hough_test()

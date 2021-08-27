@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities import calcCRE, getSlopeAndInterceptFromPoints
+from utilities import *
 from scipy.signal import stft, chirp, spectrogram
 import itertools
 from RANSAC import RANSAC_fit
@@ -11,12 +11,13 @@ import json
 def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
 
     # Define parameters
-    T = [5]
-    freqs = list(itertools.combinations([5000, 1000, 10000, 3000], 2))
+    T = [1e-4]
+    freqs = list(itertools.combinations([1300e6, 2300e6], 2))
     combs = list(itertools.product(T, freqs))
 
     # Initiate chirps dict
     chirps = {'fs': [],
+              'T': [],
               'linear': [],
               'signal': [],
               'snr': [],
@@ -28,7 +29,7 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
         for i, ((T), (f0, f1)) in enumerate(combs):
 
             # Define signal
-            fs = int(max(f1, f0) * 2.5)
+            fs = int(4800e6)
             t = np.linspace(0, T, int(T*fs))
             
             # Chirp
@@ -39,22 +40,23 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
 
             # add another, fixed chirp to test hough
             if second_chirp:
-                scnd_chirp = amp*chirp(t, f0=3000, f1=5000, t1=T, method='linear')
+                scnd_chirp = amp*chirp(t, f0=2000e6, f1=1500e6, t1=T, method='linear')
                 signal = signal + scnd_chirp
-                linear = [linear, [[0, 3000], [T, 5000]]]
+                linear = [linear, [[0, 2000e6], [T, 1500e6]]]
 
             # Add noise
             noise = np.random.normal(mu, sigma, signal.shape)
             noisy_signal = signal + noise
 
             # Calculate SNR
-            snr = np.around(SNR(signal, noisy_signal), 2)
+            snr = np.around(calcSNR(signal, noise), 2)
 
             # Get stft
-            _, _, Zxx = stft(noisy_signal, fs=fs, nfft=256)
+            _, _, Zxx = stft(noisy_signal, fs=fs, nperseg=2048, noverlap=64)
 
             # Append to dict
             chirps['fs'].append(fs)
+            chirps['T'].append(T)
             chirps['linear'].append(linear)
             chirps['signal'].append(noisy_signal.tolist())
             chirps['snr'].append(snr.tolist())
@@ -64,125 +66,98 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
     return chirps
 
 
-def SNR(signal, noise):
+def chirp_test(data, graph=False, CRE=True, plot_time_freq_curve=False):
+    if CRE:
+        cres = []
+        snrs = []
 
-    # Calculate mean
-    avg_signal_p = np.mean(np.power(signal, 2))
-    avg_noise_p = np.mean(np.power(noise, 2))
+    for sample in range(len(data['signal'])):
 
-    # Power SNR
-    snr_p = avg_signal_p / avg_noise_p
+        fs = data['fs'][sample]
+        T = data['T'][sample]
+        S = np.array(data['spec'][sample])
+        snr = np.array(data['snr'][sample])
+        linear = np.array(data['linear'][sample])
+        f_step, t_step = S.shape
 
-    # db
-    snr = 10*np.log10(snr_p)
+        # Build axes
+        t = np.linspace(0, T, t_step)
+        f = np.linspace(0, fs/2, f_step)
 
-    return snr
+        # Extract time frequency curve
+        X, y_no_med = extractTimeFrequencyCurve(S, fs, T)
+        y = medianFilter(y_no_med, N_med=9)
 
+        if plot_time_freq_curve:
+            plt.title("Time / Frequency curve, SNR: %1.2f [dB]" % snr)
+            plt.plot(X * 1e6, y_no_med * 1e-6, color='red', label='Peak frequency before Median filter')
+            plt.plot(X*1e6, y * 1e-6, color='blue', label='Peak frequency after Median filter')
+            plt.xlabel(r'$Time [\mu s]$')
+            plt.ylabel('Frequency [MHz]')
+            plt.legend()
+            plt.show()
 
-def get_points(S):
-    
-    points = np.zeros([S.shape[1], 2], dtype=int)
+        # Our RANSAC
+        line_X = np.linspace(X.min(), X.max(), num = 200)[:, np.newaxis]
+        a, b = RANSAC_fit(X, y, n_iterations=5000, threshold=0.4e-4)
+        our_prediction = a*line_X + b
 
-    for i, row in enumerate(S.T): # Same as col in S
-        points[i, 1] = i
-        points[i, 0] = np.argmax(row)
-    
-    return points
+        # Sklearn RANSAC
+        ransac = linear_model.RANSACRegressor()
+        ransac.fit(X, y)
+        inlier_mask = ransac.inlier_mask_
+        outlier_mask = np.logical_not(inlier_mask)
+        line_y_ransac = ransac.predict(line_X)
 
+        # Sklearn Linear Regressor
+        lr = linear_model.LinearRegression()
+        lr.fit(X, y)
+        line_y_lin_regres = lr.predict(line_X)
 
-def chirp_test(data, sigma):
-    ''' Test '''
+        if CRE:
+            # calculate errors
+            chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[0, 0], linear[0, 1], linear[1, 0], linear[1, 1])
+            cre = calcCRE(chirpSlope, chirpIntercept, a, b, 0, len(data['signal'][sample]) / fs)
+            cres.append(cre)
+            snrs.append(snr)
+            print(f'CRE of {snr} [db] = {cre} [%]')
+        
+        if graph:
+            # Plots
+            fig, axs = plt.subplots(2)
 
-    # Get sample
-    try:
-        sample = data['sigma'].index(sigma)
-    except ValueError:
-        print('Sigma not found!')
-        return
-    
-    fs = data['fs'][sample]
-    S = np.array(data['spec'][sample])
-    snr = np.array(data['snr'][sample])
-    linear = np.array(data['linear'][sample])
-    f_step, t_step = S.shape
+            # Plot STFT
+            # axs[0].title(f'fs {fs} | SNR {snr}')
+            axs[0].pcolormesh(t*1e6, f*1e-6, S, shading='gouraud')
+            axs[0].set(xlabel=r'$Time [\mu s]$', ylabel='Frequency [MHz]')
+            # axs[0].colorbar()
+            # axs[0].show()
 
-    # Build axes
-    t = np.linspace(0, len(data['signal'][sample]) / fs, t_step)
-    f = np.linspace(0, fs/2, f_step)
+            # Inlires & Outlires
+            axs[1].scatter(X[inlier_mask]*1e6, y[inlier_mask]*1e-6, color='yellowgreen', marker='.', label='Inliers')
+            axs[1].scatter(X[outlier_mask]*1e6, y[outlier_mask]*1e-6, color='gold', marker='.', label='Outliers')
 
-    # Get stft points
-    points = get_points(S)
-    X = np.reshape(t[points[:, 1]], [-1, 1])
-    y = f[points[:, 0]]
+            # Our RANSAC
+            axs[1].plot(line_X*1e6, our_prediction*1e-6, color='red', linewidth=1, label='Our RANSAC')
 
-    # Our RANSAC
-    line_X = np.arange(X.min(), X.max())[:, np.newaxis]
-    a, b = RANSAC_fit(X, y, n_iterations=5000)
-    our_prediction = a*line_X + b
+            # Sklearn RANSAC
+            axs[1].plot(line_X*1e6, line_y_ransac*1e-6, color='cornflowerblue', linewidth=2, label='sklearn RANSAC')
 
-    # Sklearn RANSAC
-    ransac = linear_model.RANSACRegressor()
-    ransac.fit(X, y)
-    inlier_mask = ransac.inlier_mask_
-    outlier_mask = np.logical_not(inlier_mask)
-    line_y_ransac = ransac.predict(line_X)
+            # Sklearn Linear Regressor
+            axs[1].plot(line_X*1e6, line_y_lin_regres*1e-6, color='black', linewidth=2, label='sklearn Linear Regressor')
 
-    # Sklearn Linear Regressor
-    lr = linear_model.LinearRegression()
-    lr.fit(X, y)
-    line_y_lin_regres = lr.predict(line_X)
+            # Real Linear Chirp
+            axs[1].plot(linear[:, 0]*1e6, linear[:, 1]*1e-6, linewidth=1, label='Real Linear Chirp')
 
-    # Plots
-    fig, axs = plt.subplots(2)
+            axs[1].set(xlabel=r'$Time [\mu s]$', ylabel='Frequency [MHz]')
+            axs[1].legend()
 
-    # Plot STFT
-    # axs[0].title(f'fs {fs} | SNR {snr}')
-    axs[0].pcolormesh(t, f, S, shading='gouraud')
-    axs[0].set(xlabel='Time [s]', ylabel='Frequency [Hz]')
-    # axs[0].colorbar()
-    # axs[0].show()
+            plt.tight_layout()
+            plt.show()
 
-    # Inlires & Outlires
-    axs[1].scatter(X[inlier_mask], y[inlier_mask], color='yellowgreen', marker='.', label='Inliers')
-    axs[1].scatter(X[outlier_mask], y[outlier_mask], color='gold', marker='.', label='Outliers')
-
-    # Our RANSAC
-    axs[1].plot(line_X, our_prediction, color='red', linewidth=2, label='Our RANSAC')
-
-    # Sklearn RANSAC
-    axs[1].plot(line_X, line_y_ransac, color='cornflowerblue', linewidth=2, label='sklearn RANSAC')
-
-    # Sklearn Linear Regressor
-    axs[1].plot(line_X, line_y_lin_regres, color='black', linewidth=2, label='sklearn Linear Regressor')
-
-    # Real Linear Chirp
-    axs[1].plot(linear[:, 0], linear[:, 1], linewidth=1, label='Real Linear Chirp')
-
-    axs[1].set(xlabel='Time [s]', ylabel='Frequency [Hz]')
-    axs[1].legend()
-
-    # calculate errors
-    chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[0, 0], linear[0, 1], linear[1, 0], linear[1, 1])
-    CRE = calcCRE(chirpSlope, chirpIntercept, a, b, 0, len(data['signal'][sample]) / fs)
-
-    plt.tight_layout()
-    plt.show()
-
-
-
-
-''' Make Data '''
-# Define sigmas
-sigmas = [0, 0.5, 1, 2, 2.5, 2.7, 2.8, 2.9, 3, 3.5, 4, 5, 6]
-
-# Make chirps
-data = make_chirps(amp=1, mu=0, sigmas=sigmas)
-
-# # Save json
-# json_data = json.dumps(data)
-# jsonFile = open("data.json", "w")
-# jsonFile.write(json_data)
-# jsonFile.close()
-
-# Test
-chirp_test(data, sigma=2.7)
+    if CRE:
+        plt.plot(snrs, cres, '.')
+        plt.plot(snrs, cres, '--')
+        plt.xlabel('SNR [db]')
+        plt.ylabel('CRE [%]')
+        plt.show()

@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 from matplotlib import pyplot as plt
+from utilities import *
 
 from sklearn import linear_model, datasets
 
@@ -20,13 +21,14 @@ def RANSAC_fit(x, y, n_iterations=None, threshold=None, min_inliers=None):
 
     # calculate min_inliers
     if min_inliers == None:
-        min_inl = int(0.75*x.size)
+        min_inl = int(0.7*x.size)
     else:
         min_inl = min_inliers
 
     seen_pairs = np.zeros((x.size, x.size))
     best_model = np.zeros(2)
     best_distance = sys.float_info.max
+    best_amount_inliers = 0
 
     for i in range(int(iters)):
         # draw random sample
@@ -64,6 +66,11 @@ def RANSAC_fit(x, y, n_iterations=None, threshold=None, min_inliers=None):
             if distance_from_inliers < best_distance:
                 best_model = random_pair
                 best_distance = distance_from_inliers
+                best_amount_inliers = num_inliers
+
+    # if process fails return 0, 0 and exit:
+    if best_distance == sys.float_info.max:
+        return 0, np.mean(y)
 
     # calculate a and b (ax + b = y) according to best pair
     x1 = x[best_model[0]]
@@ -73,6 +80,8 @@ def RANSAC_fit(x, y, n_iterations=None, threshold=None, min_inliers=None):
 
     a = (y1 - y2) / (x1 - x2)
     b = y1 - x1*a
+
+    #print("inliers ratio: " ,(best_amount_inliers / x.size))
 
     return a, b
 
@@ -128,5 +137,3 @@ def RANSAC_test():
     plt.xlabel("Input")
     plt.ylabel("Response")
     plt.show()
-
-#RANSAC_test()

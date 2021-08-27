@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import signal
 
 def xyData2BinaryImage(x, y):
     # transform column to row if necessary
@@ -6,21 +7,22 @@ def xyData2BinaryImage(x, y):
         x = x.T
 
     # scale data to integers
-    x_scale = 0.01
-    y_scale = 10.0
+    x_scale = 1e-7
+    y_scale = 2e6
 
     x_indices = np.round((x / x_scale)).astype(int)
     y_indices = np.round((y / y_scale)).astype(int)
 
-    y_indices = max(y_indices) - y_indices
+    yshift = max(y_indices)
+    y_indices = yshift - y_indices
 
     # create image
-    image = np.zeros((np.max(y_indices)+1, np.max(x_indices)+1))
+    image = np.zeros((max(y_indices)+1, np.max(x_indices)+1))
     image[y_indices, x_indices] = 255
 
     scale = (x_scale, y_scale)
 
-    return image, scale, max(y_indices)
+    return image, scale, yshift
 
 def getSlopeAndInterceptFromPoints(x1, y1, x2, y2):
     slope = (y2 - y1) / (x2 - x1)
@@ -34,4 +36,55 @@ def calcCRE(slope1, yIntercept1, slope2, yIntercept2, min_x_val, max_x_val, samp
     diffRatio = yValues1/yValues2
     errors = (diffRatio < 0.99) + (diffRatio > 1.01)
     numErrors = np.sum(errors)
-    return numErrors / samples
+    return (samples-numErrors) / samples
+
+def calcSNR(sig, noise):
+
+    # Calculate mean
+    # _, avg_noise_p = signal.welch(sig)
+    # _, avg_noise_p = signal.welch(noise)
+    avg_signal_p = np.mean(np.power(sig, 2))
+    avg_noise_p = np.mean(np.power(noise, 2))
+
+    # Power SNR
+    snr_p = np.mean(avg_signal_p) / np.mean(avg_noise_p)
+
+    # db
+    snr = 10*np.log10(snr_p)
+
+    return snr
+
+def extractTimeFrequencyCurve(S, fs, T):
+
+    # Initiate points array
+    points = np.zeros([S.shape[1], 2], dtype=int)
+
+    # Find frequencies
+    for i, row in enumerate(S.T):  # Same as col in S
+        points[i, 1] = i
+        points[i, 0] = np.argmax(row)
+
+    # Build axes
+    f_step, t_step = S.shape
+    t = np.linspace(0, T, t_step)
+    f = np.linspace(0, fs/2, f_step)
+
+    # Get Time & Frequency
+    X = np.reshape(t[points[:, 1]], [-1, 1])
+    y = f[points[:, 0]]
+
+    return X, y
+
+def medianFilter(signal, N_med=9):
+    
+    # Pad signal
+    new_signal = np.zeros_like(signal)
+    padded_signal = np.append(np.repeat(signal[0], N_med//2), signal)
+    padded_signal = np.append(padded_signal, np.repeat(signal[-1], N_med//2))
+
+    # Build signal based on median filter
+    for i in range(len(signal)):
+        sorted_short_signal = np.sort(padded_signal[i:i+N_med])
+        new_signal[i] = sorted_short_signal[N_med//2]
+    
+    return new_signal
