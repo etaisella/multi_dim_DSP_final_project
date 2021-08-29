@@ -66,7 +66,7 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
     return chirps
 
 
-def chirp_test(data, graph=False, CRE=True, plot_time_freq_curve=False):
+def test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False):
     if CRE:
         cres = []
         snrs = []
