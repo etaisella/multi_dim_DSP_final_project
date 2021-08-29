@@ -35,9 +35,9 @@ if __name__ == "__main__":
                 elif currentValue == "ransac":
                     RANSAC_test()
                 elif currentValue == "chirp":
-                    sigmas = np.arange(20)
+                    sigmas = np.arange(2, 20)
                     data = make_chirps(amp=1, mu=0, sigmas=sigmas)
-                    chirp_test(data, graph=True, CRE=True, plot_time_freq_curve=True)
+                    chirp_test(data, graph=False, CRE=True, plot_time_freq_curve=False)
 
     except getopt.error as err:
         # output error, and return with an error code
