@@ -1,5 +1,6 @@
 from RANSAC import RANSAC_test
-from make_chirps import make_chirps, chirp_test
+from make_chirps import make_chirps, test_chirps
+from real_chirps import test_real_chirps
 from hough import hough_test
 import numpy as np
 import getopt, sys
@@ -27,7 +28,8 @@ if __name__ == "__main__":
                       "-t, -test: Run test for a specific component, possible options:\n"
                       "hough - Conducts hough test\n"
                       "ransac - Conducts RANSAC test\n"
-                      "chirp - Conducts chirp test")
+                      "chirp - Conducts chirp test\n"
+                      "recorded_chirp - Conducts recorded chirp test")
 
             elif currentArgument in ("-t", "--Test"):
                 if currentValue == "hough":
@@ -35,9 +37,11 @@ if __name__ == "__main__":
                 elif currentValue == "ransac":
                     RANSAC_test()
                 elif currentValue == "chirp":
-                    sigmas = np.arange(20)
+                    sigmas = np.arange(2, 20)
                     data = make_chirps(amp=1, mu=0, sigmas=sigmas)
-                    chirp_test(data, graph=True, CRE=True, plot_time_freq_curve=True)
+                    test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False)
+                elif currentValue == "recorded_chirp":
+                    test_real_chirps()
 
     except getopt.error as err:
         # output error, and return with an error code

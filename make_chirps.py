@@ -66,7 +66,7 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
     return chirps
 
 
-def chirp_test(data, graph=False, CRE=True, plot_time_freq_curve=False):
+def test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False):
     if CRE:
         cres = []
         snrs = []
@@ -120,7 +120,7 @@ def chirp_test(data, graph=False, CRE=True, plot_time_freq_curve=False):
             cre = calcCRE(chirpSlope, chirpIntercept, a, b, 0, len(data['signal'][sample]) / fs)
             cres.append(cre)
             snrs.append(snr)
-            print(f'CRE of {snr} [db] = {cre} [%]')
+            print(f'SNR = {snr} [db] | CRE = {cre} [%]')
         
         if graph:
             # Plots

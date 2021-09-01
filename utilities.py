@@ -41,13 +41,14 @@ def calcCRE(slope1, yIntercept1, slope2, yIntercept2, min_x_val, max_x_val, samp
 def calcSNR(sig, noise):
 
     # Calculate mean
-    # _, avg_noise_p = signal.welch(sig)
+    # _, avg_signal_p = signal.welch(sig)
     # _, avg_noise_p = signal.welch(noise)
     avg_signal_p = np.mean(np.power(sig, 2))
     avg_noise_p = np.mean(np.power(noise, 2))
 
     # Power SNR
-    snr_p = np.mean(avg_signal_p) / np.mean(avg_noise_p)
+    # snr_p = np.mean(avg_signal_p) / np.mean(avg_noise_p)
+    snr_p = avg_signal_p / avg_noise_p
 
     # db
     snr = 10*np.log10(snr_p)
