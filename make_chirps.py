@@ -6,6 +6,7 @@ import itertools
 from RANSAC import RANSAC_fit
 from sklearn import linear_model
 import json
+from matplotlib import cm
 
 
 def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
@@ -66,7 +67,7 @@ def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
     return chirps
 
 
-def test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False):
+def test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False, plot_article_figures=False):
     if CRE:
         cres = []
         snrs = []
@@ -155,9 +156,43 @@ def test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False):
             plt.tight_layout()
             plt.show()
 
+        if plot_article_figures:
+            fig = plt.figure()
+
+            # plot 3d STFT
+            ax = fig.add_subplot(111, projection='3d')
+            X_mesh, Z_mesh = np.meshgrid(t * 1e6, f * 1e-6)
+            ax.plot_surface(X_mesh, Z_mesh, S, cmap=cm.coolwarm)
+            ax.set(xlabel=r'$Time [\mu s]$', ylabel='Frequency [MHz]')
+            plt.tight_layout()
+            plt.show()
+
+            # plot STFT flat
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.pcolormesh(t * 1e6, f * 1e-6, S, shading='gouraud')
+            ax.set(xlabel=r'$Time [\mu s]$', ylabel='Frequency [MHz]')
+            plt.tight_layout()
+            plt.show()
+
+            # plot time frequency curve
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(X * 1e6, y_no_med * 1e-6, color='red', label='Peak frequency before Median filter')
+            ax.set(xlabel=r'$Time [\mu s]$', ylabel='Frequency [MHz]')
+            plt.ylim(0, 2500)
+            plt.xlim(0, 100)
+            plt.autoscale(False)
+            plt.tight_layout()
+            plt.show()
+
     if CRE:
         plt.plot(snrs, cres, '.')
         plt.plot(snrs, cres, '--')
         plt.xlabel('SNR [db]')
         plt.ylabel('CRE [%]')
         plt.show()
+
+
+
+

@@ -29,12 +29,13 @@ def getSlopeAndInterceptFromPoints(x1, y1, x2, y2):
     intercept = y2 - slope * x2
     return slope, intercept
 
-def calcCRE(slope1, yIntercept1, slope2, yIntercept2, min_x_val, max_x_val, samples=1000):
+def calcCRE(slope_true, yIntercept_true, slope_tested, yIntercept_tested, min_x_val, max_x_val, samples=1000):
     xValues = np.linspace(min_x_val, max_x_val, samples)
-    yValues1 = xValues * slope1 + yIntercept1
-    yValues2 = xValues * slope2 + yIntercept2
-    diffRatio = yValues1/yValues2
-    errors = (diffRatio < 0.99) + (diffRatio > 1.01)
+    yValues_true = xValues * slope_true + yIntercept_true
+    yValues_test = xValues * slope_tested + yIntercept_tested
+    diff = np.absolute(yValues_true - yValues_test)
+    diffRatio = diff / yValues_true
+    errors = diffRatio > 0.01
     numErrors = np.sum(errors)
     return (samples-numErrors) / samples
 
