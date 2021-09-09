@@ -8,6 +8,53 @@ from sklearn import linear_model
 import json
 from matplotlib import cm
 
+def make_2slope_chirp(amp=1, mu=0, sigmas=[0]):
+    # Define parameters
+    T = 1e-4
+    fs = int(4800e6)
+    t_half = np.linspace(0, T/2, int((T/2)*fs))
+    t_full = np.linspace(0, T, int(T*fs))
+
+    # chirp
+    signal1 = amp * chirp(t_half, f0=1300e6, f1=1500e6, t1=(T / 2), method='linear')
+    signal2 = amp * chirp(t_half, f0=1500e6, f1=2300e6, t1=(T / 2), method='linear')
+    unified_signal = np.zeros(signal1.size + signal2.size)
+    unified_signal[:signal1.size] = signal1[:]
+    unified_signal[signal1.size:] = signal2[:]
+
+    # Initiate chirps dict
+    chirps = {'fs': [],
+              'T': [],
+              'linear': [],
+              'signal': [],
+              'snr': [],
+              'sigma': [],
+              'spec': []
+              }
+
+    for sigma in sigmas:
+        linear = [[[0, 1300e6], [T/2, 1500e6]], [[T/2, 1500e6], [T, 2300e6]]]
+
+        # Add noise
+        noise = np.random.normal(mu, sigma, unified_signal.shape)
+        noisy_signal = unified_signal + noise
+
+        # Calculate SNR
+        snr = np.around(calcSNR(unified_signal, noise), 2)
+
+        # Get stft
+        _, _, Zxx = stft(noisy_signal, fs=fs, nperseg=2048, noverlap=64)
+
+        # Append to dict
+        chirps['fs'].append(fs)
+        chirps['T'].append(T)
+        chirps['linear'].append(linear)
+        chirps['signal'].append(noisy_signal.tolist())
+        chirps['snr'].append(snr.tolist())
+        chirps['sigma'].append(sigma)
+        chirps['spec'].append(np.abs(Zxx).tolist())
+
+    return chirps
 
 def make_chirps(amp=1, mu=0, sigmas=[0], second_chirp=False):
 
@@ -100,7 +147,7 @@ def test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False, plot_ar
 
         # Our RANSAC
         line_X = np.linspace(X.min(), X.max(), num = 200)[:, np.newaxis]
-        a, b = RANSAC_fit(X, y, n_iterations=5000, threshold=0.4e-4)
+        a, b = RANSAC_fit(X, y, n_iterations=100, threshold=0.4e-4)
         our_prediction = a*line_X + b
 
         # Sklearn RANSAC

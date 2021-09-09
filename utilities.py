@@ -1,5 +1,13 @@
 import numpy as np
 from scipy import signal
+from skimage import morphology
+
+def checkScorePerLine(img, x_line, y_line):
+    height, width = img.shape
+    x_line = np.clip(x_line, 0, width-1)
+    y_line = np.clip(y_line, 0, height-1)
+    hits = img[np.around(y_line).astype(int), x_line.astype(int)] > 0
+    return np.sum(hits) / x_line.size
 
 def xyData2BinaryImage(x, y):
     # transform column to row if necessary
@@ -19,6 +27,9 @@ def xyData2BinaryImage(x, y):
     # create image
     image = np.zeros((max(y_indices)+1, np.max(x_indices)+1))
     image[y_indices, x_indices] = 255
+
+    for i in range(3):
+        image = morphology.binary_dilation(image)
 
     scale = (x_scale, y_scale)
 

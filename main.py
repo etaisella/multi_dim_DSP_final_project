@@ -33,13 +33,13 @@ if __name__ == "__main__":
 
             elif currentArgument in ("-t", "--Test"):
                 if currentValue == "hough":
-                    hough_test()
+                    hough_test(plot_article_figures=False)
                 elif currentValue == "ransac":
                     RANSAC_test()
                 elif currentValue == "chirp":
                     sigmas = np.arange(2, 20)
                     data = make_chirps(amp=1, mu=0, sigmas=sigmas)
-                    test_chirps(data, graph=False, CRE=True, plot_time_freq_curve=False, plot_article_figures=False)
+                    test_chirps(data, graph=True, CRE=True, plot_time_freq_curve=False, plot_article_figures=False)
                 elif currentValue == "recorded_chirp":
                     test_real_chirps()
 
