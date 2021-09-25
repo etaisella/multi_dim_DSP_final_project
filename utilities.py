@@ -1,5 +1,13 @@
 import numpy as np
 from scipy import signal
+from skimage import morphology
+
+def checkScorePerLine(img, x_line, y_line):
+    height, width = img.shape
+    x_line = np.clip(x_line, 0, width-1)
+    y_line = np.clip(y_line, 0, height-1)
+    hits = img[np.around(y_line).astype(int), x_line.astype(int)] > 0
+    return np.sum(hits) / x_line.size
 
 def xyData2BinaryImage(x, y):
     # transform column to row if necessary
@@ -20,6 +28,9 @@ def xyData2BinaryImage(x, y):
     image = np.zeros((max(y_indices)+1, np.max(x_indices)+1))
     image[y_indices, x_indices] = 255
 
+    for i in range(3):
+        image = morphology.binary_dilation(image)
+
     scale = (x_scale, y_scale)
 
     return image, scale, yshift
@@ -29,14 +40,16 @@ def getSlopeAndInterceptFromPoints(x1, y1, x2, y2):
     intercept = y2 - slope * x2
     return slope, intercept
 
-def calcCRE(slope1, yIntercept1, slope2, yIntercept2, min_x_val, max_x_val, samples=1000):
+def calcCRE(slope_true, yIntercept_true, slope_tested, yIntercept_tested, min_x_val, max_x_val, samples=1000):
     xValues = np.linspace(min_x_val, max_x_val, samples)
-    yValues1 = xValues * slope1 + yIntercept1
-    yValues2 = xValues * slope2 + yIntercept2
-    diffRatio = yValues1/yValues2
-    errors = (diffRatio < 0.99) + (diffRatio > 1.01)
+    yValues_true = xValues * slope_true + yIntercept_true
+    yValues_test = xValues * slope_tested + yIntercept_tested
+    diff = np.absolute(yValues_true - yValues_test)
+    diffRatio = diff / yValues_true
+
+    errors = diffRatio > 0.01
     numErrors = np.sum(errors)
-    return (samples-numErrors) / samples
+    return (samples-numErrors) / samples * 100
 
 def calcSNR(sig, noise):
 
@@ -54,6 +67,7 @@ def calcSNR(sig, noise):
     snr = 10*np.log10(snr_p)
 
     return snr
+
 
 def extractTimeFrequencyCurve(S, fs, T):
 
@@ -77,7 +91,7 @@ def extractTimeFrequencyCurve(S, fs, T):
     return X, y
 
 def medianFilter(signal, N_med=9):
-    
+
     # Pad signal
     new_signal = np.zeros_like(signal)
     padded_signal = np.append(np.repeat(signal[0], N_med//2), signal)
@@ -87,5 +101,5 @@ def medianFilter(signal, N_med=9):
     for i in range(len(signal)):
         sorted_short_signal = np.sort(padded_signal[i:i+N_med])
         new_signal[i] = sorted_short_signal[N_med//2]
-    
+
     return new_signal
