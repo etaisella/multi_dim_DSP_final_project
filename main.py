@@ -31,7 +31,7 @@ if __name__ == "__main__":
                       "hough_cre - Conducts hough cre test\n"
                       "ransac - Conducts RANSAC test\n"
                       "chirp - Conducts chirp test\n"
-                      "recorded_chirp - Conducts recorded chirp test\n"
+                      "recorded_chirp - Conducts recorded chirp test - Example\n"
                       "recorded_chirp_cre - Conducts recorded chirp cre test")
 
             elif currentArgument in ("-t", "--Test"):
