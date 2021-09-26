@@ -101,7 +101,8 @@ def test_real_chirps():
 def test_real_chirps_cre():
 
     # Load dataframe
-    df = pd.read_pickle('data/recordings_full.pkl')
+    # df = pd.read_pickle('data/recordings_full.pkl') # Download recordings_full.pkl for full testing
+    df = pd.read_pickle('data/recordings.pkl')
 
     # Convert to numpy
     Ts_full = df.to_numpy()
