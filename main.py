@@ -1,5 +1,5 @@
 from RANSAC import RANSAC_test
-from make_chirps import make_chirps, test_chirps
+from make_chirps import make_chirps, test_chirps, chirp_cre_test
 from real_chirps import test_real_chirps, test_real_chirps_cre
 from hough import hough_test, hough_cre_test
 import numpy as np
@@ -45,7 +45,8 @@ if __name__ == "__main__":
                     # Make new data
                     sigmas = np.linspace(1, 20, 20)
                     data = make_chirps(sigmas=sigmas)
-                    test_chirps(data, CRE=True, plot_only_predictions=True)
+                    test_chirps(data, CRE=True)
+                    # chirp_cre_test()
                 elif currentValue == "recorded_chirp":
                     test_real_chirps()
                 elif currentValue == "recorded_chirp_cre":
