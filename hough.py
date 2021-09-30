@@ -19,7 +19,6 @@ def hough_test(plot_article_figures=False, CRE=False):
     fs = data['fs'][sample]
     S = np.array(data['spec'][sample])
     snr = np.array(data['snr'][sample])
-    print(snr)
     linear = np.array(data['linear'][sample])
     f_step, t_step = S.shape
 
@@ -150,7 +149,6 @@ def hough_test(plot_article_figures=False, CRE=False):
         plt.xlabel(r'$Time [\mu s]$')
         plt.ylabel("Frequencies [Hz]")
         plt.show()
-
 
 def hough_cre_test():
     

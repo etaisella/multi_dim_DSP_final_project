@@ -31,6 +31,7 @@ if __name__ == "__main__":
                       "hough_cre - Conducts hough cre test\n"
                       "ransac - Conducts RANSAC test\n"
                       "chirp - Conducts chirp test\n"
+                      "chirp_cre - Conducts chirp cre test\n"
                       "recorded_chirp - Conducts recorded chirp test - Example\n"
                       "recorded_chirp_cre - Conducts recorded chirp cre test")
 
@@ -43,10 +44,12 @@ if __name__ == "__main__":
                     RANSAC_test()
                 elif currentValue == "chirp":
                     # Make new data
-                    sigmas = np.linspace(1, 20, 20)
+                    sigmas = np.linspace(1, 20, 15)
                     data = make_chirps(sigmas=sigmas)
-                    test_chirps(data, CRE=True)
-                    # chirp_cre_test()
+                    test_chirps(data, plot_time_freq_curve=True)
+                elif currentValue == "chirp_cre":
+                    # Make CRE chirp test
+                    chirp_cre_test()
                 elif currentValue == "recorded_chirp":
                     test_real_chirps()
                 elif currentValue == "recorded_chirp_cre":
