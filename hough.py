@@ -5,7 +5,7 @@ from skimage.transform import hough_line, hough_line_peaks
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-def hough_test(plot_article_figures=False):
+def hough_test(plot_article_figures=False, CRE=False):
     sigmas = np.arange(2, 24)
     data = make_2slope_chirp(amp=1, mu=0, sigmas=sigmas)
 
@@ -101,9 +101,13 @@ def hough_test(plot_article_figures=False):
     if (score_line0_left > score_line1_left):
         y_line0 = y_line0_left
         y_line1 = y_line1_right
+        slopes_0, y_intercepts_0 = slopes[0], y_intercepts[0]
+        slopes_1, y_intercepts_1 = slopes[1], y_intercepts[1]
     else:
         y_line0 = y_line1_left
         y_line1 = y_line0_right
+        slopes_0, y_intercepts_0 = slopes[1], y_intercepts[1]
+        slopes_1, y_intercepts_1 = slopes[0], y_intercepts[0]
 
     # plot hough results
     plt.plot(X1, y_line0, color='red', linewidth=3, label='Hough Output')
@@ -130,6 +134,13 @@ def hough_test(plot_article_figures=False):
     plt.tight_layout()
     plt.show()
 
+    if CRE:
+        chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[0, 0, 0], linear[0, 0, 1], linear[0, 1, 0], linear[0, 1, 1])
+        cre_0 = calcCRE(chirpSlope, chirpIntercept, slopes_0, y_intercepts_0, 0, T)
+        chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[1, 0, 0], linear[1, 0, 1], linear[1, 1, 0], linear[1, 1, 1])
+        cre_1 = calcCRE(chirpSlope, chirpIntercept, slopes_1, y_intercepts_1, 0, T)
+        print(f'CRE 0 = {cre_0} [%] | CRE 1 = {cre_1} [%] | MEAN CRE\'s = {(cre_0 + cre_1) / 2}')
+
     if plot_article_figures:
         # plot original image
         plt.imshow(img, cmap=cm.gray)
@@ -138,3 +149,125 @@ def hough_test(plot_article_figures=False):
         plt.xlabel(r'$Time [\mu s]$')
         plt.ylabel("Frequencies [Hz]")
         plt.show()
+
+def hough_cre_test():
+    
+    n_sigmas = 15
+    cre_0_mean = np.zeros(n_sigmas)
+    cre_1_mean = np.zeros(n_sigmas)
+
+    for test in range(100):
+
+        sigmas = np.linspace(1, 20, n_sigmas)
+        data = make_2slope_chirp(amp=1, mu=0, sigmas=sigmas)
+        
+        cres = {'cre_0': [],
+                'cre_1': [],
+                'cre_mean': []}
+        snrs = []
+
+
+        for sample in range(len(data['signal'])):
+
+            T = [1e-4]
+            fs = data['fs'][sample]
+            S = np.array(data['spec'][sample])
+            snr = np.array(data['snr'][sample])
+            linear = np.array(data['linear'][sample])
+            f_step, t_step = S.shape
+
+            # Build axes
+            t = np.linspace(0, len(data['signal'][sample]) / fs, t_step)
+            f = np.linspace(0, fs / 2, f_step)
+
+            # Get stft points
+            x, y_no_med = extractTimeFrequencyCurve(S, fs, T)
+            y = y_no_med
+            #y = medianFilter(y_no_med, N_med=3)
+
+            # get image of two chirps
+            img, scale, yshift = xyData2BinaryImage(x, y)
+            im_height, im_width = img.shape
+
+            # format original chirp line to fit image
+            linear[:, :, 0] = linear[:, :, 0] / scale[0]
+            linear[:, :, 1] = linear[:, :, 1] / scale[1]
+            linear[:, :, 1] = yshift - linear[:, :, 1]
+
+            tested_angles = np.linspace(-np.pi / 2, np.pi / 2, 360, endpoint=False)
+            h, theta, d = hough_line(img, theta=tested_angles)
+
+            slopes = np.zeros(2)
+            y_intercepts = np.zeros(2)
+
+            for _, angle, dist, i in zip(*hough_line_peaks(h, theta, d), range(2)):
+                (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+                slopes[i] = np.tan(angle + np.pi / 2)
+                y_intercepts[i] = y0-slopes[i]*x0
+
+            # get intersection point
+            if slopes[1] == slopes[0]:
+                slopes[1] = slopes[1] + 0.001
+            x_intersection = (y_intercepts[0] - y_intercepts[1]) / (slopes[1] - slopes[0])
+
+            # check line locations
+            try:
+                X1 = np.arange(int(x_intersection))
+                X2 = X1 + int(x_intersection)
+            except OverflowError:
+                X1 = np.arange(len(y_intercepts))
+                X2 = np.arange(len(y_intercepts))
+            
+            y_line0_left = slopes[0] * X1 + y_intercepts[0]
+            y_line0_right = slopes[0] * X2 + y_intercepts[0]
+            y_line1_left = slopes[1] * X1 + y_intercepts[1]
+            y_line1_right = slopes[1] * X2 + y_intercepts[1]
+
+            score_line0_left = checkScorePerLine(img, X1, y_line0_left)
+            score_line1_left = checkScorePerLine(img, X1, y_line1_left)
+            #score_line0_right = checkScorePerLine(img, X2, y_line0_right)
+            #score_line1_right = checkScorePerLine(img, X2, y_line1_right)
+
+            if (score_line0_left > score_line1_left):
+                y_line0 = y_line0_left
+                y_line1 = y_line1_right
+                slopes_0, y_intercepts_0 = slopes[0], y_intercepts[0]
+                slopes_1, y_intercepts_1 = slopes[1], y_intercepts[1]
+            else:
+                y_line0 = y_line1_left
+                y_line1 = y_line0_right
+                slopes_0, y_intercepts_0 = slopes[1], y_intercepts[1]
+                slopes_1, y_intercepts_1 = slopes[0], y_intercepts[0]
+
+            chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[0, 0, 0], linear[0, 0, 1], linear[0, 1, 0], linear[0, 1, 1])
+            # cre_0 = calcCRE(chirpSlope, chirpIntercept, slopes[0], y_intercepts[0], linear[0, 0, 0], linear[0, -1, 0])
+            cre_0 = calcCRE(chirpSlope, chirpIntercept, slopes_0, y_intercepts_0, 0, T, samples=500)
+            cres['cre_0'].append(cre_0)
+            chirpSlope, chirpIntercept = getSlopeAndInterceptFromPoints(linear[1, 0, 0], linear[1, 0, 1], linear[1, 1, 0], linear[1, 1, 1])
+            # cre_1 = calcCRE(chirpSlope, chirpIntercept, slopes[1], y_intercepts[1], linear[1, 0, 0], linear[1, -1, 0])
+            cre_1 = calcCRE(chirpSlope, chirpIntercept, slopes_1, y_intercepts_1, 0, T, samples=500)
+            cres['cre_1'].append(cre_1)
+            # print(f'CRE 0 = {cre_0} [%] | CRE 1 = {cre_1} [%] | MEAN CRE\'s = {(cre_0 + cre_1) / 2}')
+            snrs.append(snr)
+            cres['cre_mean'].append((cre_0 + cre_1) / 2)
+
+        if (test + 1) % 10 == 0:
+            print(f'Finished {test+1} tests...')
+
+        # Add cres
+        cre_0_mean += np.array(cres['cre_0'])
+        cre_1_mean += np.array(cres['cre_1'])
+
+    cre_0_mean = cre_0_mean / (test+1)
+    cre_1_mean = cre_1_mean / (test+1)
+
+    plt.plot(snrs, cre_0_mean, 'g.', label='HOUGH Left line')
+    plt.plot(snrs, cre_0_mean, 'g--')
+    plt.plot(snrs, cre_1_mean, 'r.', label='HOUGH Right line')
+    plt.plot(snrs, cre_1_mean, 'r--')
+    plt.plot(snrs, (cre_0_mean + cre_1_mean)/2, 'b.', label='HOUGH Mean')
+    plt.plot(snrs, (cre_0_mean + cre_1_mean)/2, 'b--')
+    plt.xlabel('SNR [db]')
+    plt.ylabel('CRE [%]')
+    plt.legend()
+    plt.show()

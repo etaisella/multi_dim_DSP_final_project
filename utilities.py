@@ -46,9 +46,10 @@ def calcCRE(slope_true, yIntercept_true, slope_tested, yIntercept_tested, min_x_
     yValues_test = xValues * slope_tested + yIntercept_tested
     diff = np.absolute(yValues_true - yValues_test)
     diffRatio = diff / yValues_true
+
     errors = diffRatio > 0.01
     numErrors = np.sum(errors)
-    return (samples-numErrors) / samples
+    return (samples-numErrors) / samples * 100
 
 def calcSNR(sig, noise):
 
@@ -66,6 +67,7 @@ def calcSNR(sig, noise):
     snr = 10*np.log10(snr_p)
 
     return snr
+
 
 def extractTimeFrequencyCurve(S, fs, T):
 
@@ -89,7 +91,7 @@ def extractTimeFrequencyCurve(S, fs, T):
     return X, y
 
 def medianFilter(signal, N_med=9):
-    
+
     # Pad signal
     new_signal = np.zeros_like(signal)
     padded_signal = np.append(np.repeat(signal[0], N_med//2), signal)
@@ -99,5 +101,5 @@ def medianFilter(signal, N_med=9):
     for i in range(len(signal)):
         sorted_short_signal = np.sort(padded_signal[i:i+N_med])
         new_signal[i] = sorted_short_signal[N_med//2]
-    
+
     return new_signal
